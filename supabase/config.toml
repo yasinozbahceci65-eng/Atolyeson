@@ -1,0 +1,2 @@
+[functions.iyzico-checkout]
+verify_jwt = false
