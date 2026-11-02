@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Save, Calculator, CheckCircle2, XCircle, ShoppingCart, Ruler, Plus, Trash2, Package, FileText, Send, Layers, WifiOff } from 'lucide-react-native';
@@ -6,7 +6,7 @@ import { Colors } from '@/lib/colors';
 import { supabase, Item, Project, ProjectMaterial, UnitType } from '@/lib/supabase';
 import { useProfile } from '@/lib/profile-context';
 import { useAuth } from '@/lib/auth-context';
-import { shareWhatsAppSummary, generatePdfQuote as exportPdfQuote } from '@/lib/pdf-share';
+import { generatePdfQuote as exportPdfQuote } from '@/lib/pdf-share';
 import { offlineSync } from '@/lib/offline-sync';
 
 interface TradeTemplate {
@@ -317,14 +317,14 @@ export default function ProjectDetailScreen() {
     }
   };
 
-  const generateWhatsAppSummary = async () => {
+  const sendQuoteToUsta = async () => {
     if (materials.length === 0) { Alert.alert('Uyarı', 'Önce hesaplama yapın'); return; }
     const areaNum = parseFloat(area) || 0;
     const coatInfo = TRADE_TEMPLATES.find(t => t.label === projectType)?.hasCoats ? ` (${coats} kat)` : '';
     const insufficient = materials.filter(m => !m.is_sufficient);
     const userName = profile?.name ?? 'Atölye Kullanıcısı';
 
-    let msg = `📋 *MALİYET TEKLİFİ*\n`;
+    let msg = `📋 *USTAYA TEKLİF TALEBİ*\n`;
     msg += `━━━━━━━━━━━━━━━\n`;
     msg += `👤 ${userName}\n`;
     msg += `🏠 ${projectName || 'Proje'}\n`;
@@ -351,9 +351,15 @@ export default function ProjectDetailScreen() {
       });
     }
     msg += `━━━━━━━━━━━━━━━\n`;
-    msg += `📱 Atölye Uygulaması ile oluşturuldu`;
+    msg += `\n📱 Atölye Uygulaması ile oluşturuldu`;
+    msg += `\n\nBu proje için işçilik ve toplam teklifinizi paylaşabilir misiniz?`;
 
-    await shareWhatsAppSummary(msg);
+    const whatsappUrl = `https://wa.me/905537743488?text=${encodeURIComponent(msg)}`;
+    try {
+      await Linking.openURL(whatsappUrl);
+    } catch {
+      Alert.alert('WhatsApp açılamadı', 'WhatsApp uygulaması veya sohbet bağlantısı kullanılamıyor.');
+    }
   };
 
   const generatePdfQuote = async () => {
@@ -630,9 +636,9 @@ export default function ProjectDetailScreen() {
                   <Text style={styles.pdfBtnText}>PDF Teklif</Text>
                 </>}
               </TouchableOpacity>
-              <TouchableOpacity style={styles.whatsappBtn} onPress={generateWhatsAppSummary}>
+              <TouchableOpacity style={styles.whatsappBtn} onPress={sendQuoteToUsta}>
                 <Send color={Colors.white} size={18} />
-                <Text style={styles.whatsappBtnText}>WhatsApp Özeti</Text>
+                <Text style={styles.whatsappBtnText}>Ustaya Teklif Ver</Text>
               </TouchableOpacity>
             </View>
           </View>
