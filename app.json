@@ -5,7 +5,7 @@
     "owner": "theyasinoz",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/images/ATOLYEM_20261102_202043_0000.png",
     "scheme": "atolyeapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -19,7 +19,7 @@
     "android": {
       "versionCode": 1,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/images/ATOLYEM_20261102_202043_0000.png",
         "backgroundColor": "#1a2a3e"
       },
       "permissions": [
@@ -32,7 +32,7 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/ATOLYEM_20261102_202043_0000.png"
     },
     "plugins": [
       "expo-router",

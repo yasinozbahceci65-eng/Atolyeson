@@ -51,7 +51,7 @@ export default function LoginScreen() {
       <View style={styles.content}>
         <View style={styles.brandBlock}>
           <Image
-            source={require('@/assets/images/ATOLYEM_20261009_203310_0000.png')}
+            source={require('@/assets/images/ATOLYEM_20261102_202043_0000.png')}
             style={styles.logo}
             resizeMode="contain"
           />
