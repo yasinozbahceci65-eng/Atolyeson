@@ -41,7 +41,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
 }
 
 function AuthGate() {
-  const { session, loading, isGuest, signInAsGuest } = useAuth();
+  const { session, loading, isGuest } = useAuth();
   const router = useRouter();
   const navState = useRootNavigationState();
 
@@ -49,12 +49,11 @@ function AuthGate() {
     if (!navState?.key) return;
     if (loading) return;
     if (!session && !isGuest) {
-      signInAsGuest();
-      router.replace('/(tabs)/');
+      router.replace('/login');
     } else {
       router.replace('/(tabs)/');
     }
-  }, [session, loading, isGuest, navState?.key, router, signInAsGuest]);
+  }, [session, loading, isGuest, navState?.key, router]);
 
   if (loading) {
     return (
@@ -95,7 +94,7 @@ export default function RootLayout() {
         <GuestGuardProvider>
           <ProfileProvider>
             <AuthGate />
-            <Stack screenOptions={{ headerShown: false }}>
+            <Stack initialRouteName="login" screenOptions={{ headerShown: false }}>
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="login" />
               <Stack.Screen name="item-detail" />
