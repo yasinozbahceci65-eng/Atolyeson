@@ -29,7 +29,6 @@ export default function AddItemScreen() {
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('0');
   const [unitType, setUnitType] = useState<UnitType>('Adet');
-  const [categoryId, setCategoryId] = useState<string | null>(null);
   const [barcodeValue, setBarcodeValue] = useState(barcode || '');
   const [notes, setNotes] = useState('');
 
@@ -44,6 +43,18 @@ export default function AddItemScreen() {
   const save = async () => {
     if (!name.trim()) { Alert.alert('Uyarı', 'Lütfen malzeme adı girin'); return; }
     setSaving(true);
+    const timestamp = new Date().toISOString();
+    const selectedTradeCategory = TRADE_CATEGORIES.find(category => category.name === selectedCategory);
+    const localCategoryId = selectedTradeCategory ? `local-category-${selectedTradeCategory.name}` : null;
+    const localCategory = selectedTradeCategory ? {
+      id: localCategoryId as string,
+      name: selectedTradeCategory.name,
+      color: selectedTradeCategory.color,
+      icon: 'box',
+      created_at: timestamp,
+    } : undefined;
+    let categoryId: string | null = localCategoryId;
+
     try {
       if (isGuest) {
         const localItem: Item = {
@@ -52,13 +63,14 @@ export default function AddItemScreen() {
           quantity: parseFloat(quantity) || 0,
           max_quantity: 100,
           unit_type: unitType,
-          category_id: null,
+          category_id: localCategoryId,
+          categories: localCategory,
           critical_level: 10,
           barcode_value: barcodeValue || null,
           image_url: null,
           notes: notes || null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          created_at: timestamp,
+          updated_at: timestamp,
         };
         const cachedItems = await offlineSync.getCachedItems();
         await offlineSync.cacheItems([localItem, ...cachedItems]);
@@ -66,7 +78,6 @@ export default function AddItemScreen() {
         return;
       }
 
-      let categoryId: string | null = null;
       if (selectedCategory) {
         const category = TRADE_CATEGORIES.find(item => item.name === selectedCategory);
         if (!category) throw new Error('category_not_found');
@@ -119,13 +130,14 @@ export default function AddItemScreen() {
         quantity: parseFloat(quantity) || 0,
         max_quantity: 100,
         unit_type: unitType,
-        category_id: null,
+        category_id: categoryId ?? localCategoryId,
+        categories: localCategory,
         critical_level: 10,
         barcode_value: barcodeValue || null,
         image_url: null,
         notes: notes || null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        created_at: timestamp,
+        updated_at: timestamp,
       };
       await offlineSync.cacheItems([fallbackItem, ...cachedItems]).catch(() => {});
       router.back();
