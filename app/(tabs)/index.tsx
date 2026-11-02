@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, Alert } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState, useEffect } from 'react';
-import { Search, Plus, ScanLine, AlertTriangle, Package, TrendingDown, Boxes, ArrowRight, WifiOff, RefreshCw } from 'lucide-react-native';
+import { Search, ScanLine, AlertTriangle, Package, TrendingDown, Boxes, ArrowRight, WifiOff, RefreshCw } from 'lucide-react-native';
 import { Colors } from '@/lib/colors';
 import { supabase, Item } from '@/lib/supabase';
 import { BannerAd } from '@/components/BannerAd';
@@ -119,12 +119,6 @@ export default function DashboardScreen() {
             onChangeText={setSearch}
           />
         </View>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => requireAuth() && router.push('/add-item')}
-        >
-          <Plus color={Colors.white} size={24} />
-        </TouchableOpacity>
       </View>
 
       <View style={styles.statsRow}>
@@ -179,7 +173,7 @@ export default function DashboardScreen() {
           <View style={styles.emptyState}>
             <Package color={Colors.neutral300} size={48} />
             <Text style={styles.emptyTitle}>Henüz malzeme yok</Text>
-            <Text style={styles.emptyDesc}>+ butonuna basarak ilk malzemenizi ekleyin</Text>
+            <Text style={styles.emptyDesc}>Malzeme eklemek için Atölye bölümünü açın</Text>
           </View>
         ) : (
           filtered.map((item) => (
@@ -263,14 +257,6 @@ const styles = StyleSheet.create({
   },
   searchIcon: { marginRight: 8 },
   searchInput: { flex: 1, fontFamily: 'Inter-Regular', fontSize: 15, color: Colors.neutral800 },
-  addButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: Colors.secondary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   statsRow: { flexDirection: 'row', paddingHorizontal: 20, paddingBottom: 12, backgroundColor: Colors.primary, gap: 10 },
   statCard: {
     flex: 1,
