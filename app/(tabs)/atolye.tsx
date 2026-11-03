@@ -61,6 +61,7 @@ export default function AtolyeScreen() {
   }, [fetchData]);
 
   const removeItem = (item: Item) => {
+    if (!requireAuth()) return;
     Alert.alert('Malzemeyi Sil', 'Bu malzemeyi silmek istediğinize emin misiniz?', [
       { text: 'İptal', style: 'cancel' },
       {

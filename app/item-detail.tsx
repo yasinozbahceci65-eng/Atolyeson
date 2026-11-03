@@ -5,12 +5,14 @@ import { ArrowLeft, Minus, Plus, Trash2, ScanLine, AlertTriangle, Save } from 'l
 import { Colors } from '@/lib/colors';
 import { supabase, Item, Category, UnitType } from '@/lib/supabase';
 import { offlineSync } from '@/lib/offline-sync';
+import { useGuestGuard } from '@/lib/guest-guard';
 
 const UNITS: UnitType[] = ['Litre', 'Adet', 'Metre', 'Kg', 'Kutu', 'm²'];
 
 export default function ItemDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { requireAuth } = useGuestGuard();
   const [item, setItem] = useState<Item | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,7 +71,7 @@ export default function ItemDetailScreen() {
   };
 
   const save = async () => {
-    if (!item) return;
+    if (!requireAuth() || !item) return;
     setSaving(true);
     const updatedAt = new Date().toISOString();
     const updatedItem: Item = {
@@ -113,6 +115,7 @@ export default function ItemDetailScreen() {
   };
 
   const remove = () => {
+    if (!requireAuth()) return;
     Alert.alert('Sil', 'Bu malzemeyi silmek istediğinize emin misiniz?', [
       { text: 'İptal', style: 'cancel' },
       {

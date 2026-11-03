@@ -8,6 +8,7 @@ import { useProfile } from '@/lib/profile-context';
 import { useAuth } from '@/lib/auth-context';
 import { generatePdfQuote as exportPdfQuote } from '@/lib/pdf-share';
 import { offlineSync } from '@/lib/offline-sync';
+import { useGuestGuard } from '@/lib/guest-guard';
 
 interface TradeTemplate {
   label: string;
@@ -105,6 +106,7 @@ export default function ProjectDetailScreen() {
   const router = useRouter();
   const { profile } = useProfile();
   const { isGuest } = useAuth();
+  const { requireAuth } = useGuestGuard();
   const [project, setProject] = useState<Project | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
@@ -244,6 +246,7 @@ export default function ProjectDetailScreen() {
   };
 
   const save = async () => {
+    if (!requireAuth()) return;
     if (!projectName.trim()) { Alert.alert('Uyarı', 'Lütfen proje adı girin'); return; }
     setSaving(true);
     const projectData = {
@@ -318,6 +321,7 @@ export default function ProjectDetailScreen() {
   };
 
   const sendQuoteToUsta = async () => {
+    if (!requireAuth()) return;
     if (materials.length === 0) { Alert.alert('Uyarı', 'Önce hesaplama yapın'); return; }
     const areaNum = parseFloat(area) || 0;
     const coatInfo = TRADE_TEMPLATES.find(t => t.label === projectType)?.hasCoats ? ` (${coats} kat)` : '';
@@ -363,6 +367,7 @@ export default function ProjectDetailScreen() {
   };
 
   const generatePdfQuote = async () => {
+    if (!requireAuth()) return;
     if (materials.length === 0) { Alert.alert('Uyarı', 'Önce hesaplama yapın'); return; }
     setGeneratingPdf(true);
     try {

@@ -21,8 +21,10 @@ export function GuestGuardProvider({ children }: { children: ReactNode }) {
   const [modalVisible, setModalVisible] = useState(false);
 
   const requireAuth = useCallback((): boolean => {
-    return true;
-  }, []);
+    if (session) return true;
+    setModalVisible(true);
+    return false;
+  }, [session]);
 
   const goToLogin = () => {
     setModalVisible(false);

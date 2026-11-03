@@ -47,6 +47,7 @@ export default function ProjelerScreen() {
   useFocusEffect(useCallback(() => { fetch().catch(() => {}); }, [fetch]));
 
   const removeProject = (project: Project) => {
+    if (!requireAuth()) return;
     Alert.alert('Projeyi Sil', 'Bu projeyi ve içindeki malzemeleri silmek istediğinize emin misiniz?', [
       { text: 'İptal', style: 'cancel' },
       {
@@ -86,7 +87,7 @@ export default function ProjelerScreen() {
         </View>
         <TouchableOpacity
           style={styles.addButton}
-          onPress={() => (isGuest || requireAuth()) && router.push('/project-detail')}
+          onPress={() => requireAuth() && router.push('/project-detail')}
         >
           <Plus color={Colors.white} size={24} />
         </TouchableOpacity>

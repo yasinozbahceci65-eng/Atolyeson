@@ -4,10 +4,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, ScanLine, X, CheckCircle2, AlertCircle } from 'lucide-react-native';
 import { Colors } from '@/lib/colors';
 import { supabase, Item } from '@/lib/supabase';
+import { useGuestGuard } from '@/lib/guest-guard';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 
 export default function ScannerScreen() {
   const router = useRouter();
+  const { requireAuth } = useGuestGuard();
   const { itemId } = useLocalSearchParams<{ itemId?: string }>();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
@@ -15,7 +17,7 @@ export default function ScannerScreen() {
   const [searching, setSearching] = useState(false);
 
   const handleScan = async ({ data }: { data: string }) => {
-    if (scanned) return;
+    if (!requireAuth() || scanned) return;
     setScanned(true);
     setSearching(true);
     const { data: item } = await supabase
@@ -39,7 +41,7 @@ export default function ScannerScreen() {
   };
 
   const adjustQty = async (delta: number) => {
-    if (!matchedItem) return;
+    if (!requireAuth() || !matchedItem) return;
     const newQty = Math.max(0, matchedItem.quantity + delta);
     const { data } = await supabase
       .from('items')
