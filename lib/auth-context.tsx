@@ -5,6 +5,8 @@ import { makeRedirectUri } from 'expo-auth-session';
 import { supabase } from '@/lib/supabase';
 import type { Session, User } from '@supabase/supabase-js';
 
+WebBrowser.maybeCompleteAuthSession();
+
 export interface AuthProfile {
   name: string;
   email: string | null;
@@ -143,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = useCallback(async () => {
     const redirectTo = Platform.OS === 'web'
       ? `${window.location.origin}/login`
-      : makeRedirectUri({ scheme: 'atolyeapp', path: 'auth-callback' });
+      : makeRedirectUri({ path: 'auth-callback' });
 
     if (Platform.OS === 'web') {
       const { error } = await supabase.auth.signInWithOAuth({
