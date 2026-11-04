@@ -7,8 +7,6 @@
     "orientation": "portrait",
     "icon": "./assets/images/ATOLYEM_20261102_202043_0000.png",
     "splash": {
-      "image": "./assets/splash-transparent.png",
-      "resizeMode": "contain",
       "backgroundColor": "#F8FAFC"
     },
     "scheme": "atolyeapp",
