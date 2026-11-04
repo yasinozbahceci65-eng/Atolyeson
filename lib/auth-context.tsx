@@ -143,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = useCallback(async () => {
     const redirectTo = Platform.OS === 'web'
       ? `${window.location.origin}/login`
-      : makeRedirectUri({ path: 'auth-callback' });
+      : makeRedirectUri({ scheme: 'atolyeapp', path: 'auth-callback' });
 
     if (Platform.OS === 'web') {
       const { error } = await supabase.auth.signInWithOAuth({
