@@ -10,7 +10,8 @@ import { useGuestGuard } from '@/lib/guest-guard';
 const UNITS: UnitType[] = ['Litre', 'Adet', 'Metre', 'Kg', 'Kutu', 'm²'];
 
 export default function ItemDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: rawId } = useLocalSearchParams<{ id?: string | string[] }>();
+  const id = Array.isArray(rawId) ? rawId[0] : rawId;
   const router = useRouter();
   const { requireAuth } = useGuestGuard();
   const [item, setItem] = useState<Item | null>(null);
@@ -40,10 +41,11 @@ export default function ItemDetailScreen() {
 
   const fetch = useCallback(async () => {
     try {
+      const cachedItems = await offlineSync.getCachedItems().catch(() => []);
+      const cachedItem = cachedItems.find(cachedItem => cachedItem.id === id);
+
       if (id?.startsWith('local-')) {
-        const cachedItems = await offlineSync.getCachedItems();
-        const localItem = cachedItems.find(cachedItem => cachedItem.id === id);
-        if (localItem) applyItem(localItem);
+        if (cachedItem) applyItem(cachedItem);
         setCategories([]);
         return;
       }
@@ -52,12 +54,14 @@ export default function ItemDetailScreen() {
         supabase.from('items').select('*, categories(*)').eq('id', id).maybeSingle(),
         supabase.from('categories').select('*').order('name'),
       ]);
+      if (itemRes.error) throw itemRes.error;
       if (itemRes.data) applyItem(itemRes.data);
+      else if (cachedItem) applyItem(cachedItem);
       setCategories(catRes.data ?? []);
     } catch {
       const cachedItems = await offlineSync.getCachedItems().catch(() => []);
-      const localItem = cachedItems.find(cachedItem => cachedItem.id === id);
-      if (localItem) applyItem(localItem);
+      const cachedItem = cachedItems.find(currentItem => currentItem.id === id);
+      if (cachedItem) applyItem(cachedItem);
     } finally {
       setLoading(false);
     }
