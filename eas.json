@@ -11,7 +11,7 @@
       },
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "https://famqkcipsbrelfadikxb.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://lamqkcipsbrelfadikxb.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_i2obMcXwHRSNZeFDc2nSaQ_-pfRN36"
       }
     },
@@ -23,7 +23,7 @@
       "distribution": "store",
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "https://famqkcipsbrelfadikxb.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://lamqkcipsbrelfadikxb.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_i2obMcXwHRSNZeFDc2nSaQ_-pfRN36"
       }
     }
