@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, ScrollView, Alert, ActivityIndicator, Linking, Platform, Share } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, ScrollView, Alert, ActivityIndicator, Linking, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useCallback } from 'react';
 import { ArrowLeft, Camera, Image as ImageIcon, Send, MessageCircle, X } from 'lucide-react-native';
@@ -56,7 +56,9 @@ export default function ConsultScreen() {
     setSending(true);
 
     let photoUrl: string | null = null;
+    const prefix = isUsta ? 'Ustaya Danışma' : 'Mimara Danışma';
 
+    // Try to upload photo to storage; if it fails, we still open WhatsApp with text only
     try {
       let uploadBody: Blob | ArrayBuffer;
       let photoSize = 0;
@@ -83,70 +85,64 @@ export default function ConsultScreen() {
       const fileName = `consult/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}.${extension}`;
 
       // Try Supabase Storage SDK first
-      let uploadOk = false;
       try {
         const { error: uploadError } = await supabase.storage
           .from('consult-photos')
           .upload(fileName, uploadBody, { contentType, cacheControl: '3600', upsert: false });
         if (!uploadError) {
-          uploadOk = true;
           const { data } = supabase.storage.from('consult-photos').getPublicUrl(fileName);
           if (data.publicUrl) photoUrl = data.publicUrl;
         }
       } catch {}
 
       // Fallback: direct HTTP upload to Storage REST API
-      if (!uploadOk || !photoUrl) {
+      if (!photoUrl) {
         const storagePath = encodeURIComponent(fileName);
         const uploadEndpoint = `${SUPABASE_URL}/storage/v1/object/consult-photos/${storagePath}`;
-        const headers: Record<string, string> = {
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'apikey': SUPABASE_ANON_KEY,
-          'Content-Type': contentType,
-          'x-upsert': 'false',
-        };
         const uploadResponse = await fetch(uploadEndpoint, {
           method: 'POST',
-          headers,
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'apikey': SUPABASE_ANON_KEY,
+            'Content-Type': contentType,
+            'x-upsert': 'false',
+          },
           body: Platform.OS === 'web' ? uploadBody as Blob : (uploadBody as ArrayBuffer),
         });
-        if (!uploadResponse.ok) {
-          const errText = await uploadResponse.text().catch(() => '');
-          throw new Error(`upload_http_${uploadResponse.status}: ${errText.slice(0, 200)}`);
+        if (uploadResponse.ok) {
+          photoUrl = `${SUPABASE_URL}/storage/v1/object/public/consult-photos/${storagePath}`;
         }
-        photoUrl = `${SUPABASE_URL}/storage/v1/object/public/consult-photos/${storagePath}`;
-      }
-
-      if (!photoUrl) throw new Error('photo_url_failed');
-
-      const prefix = isUsta ? 'Ustaya Danışma' : 'Mimara Danışma';
-      const message = `${prefix}\n\n${description.trim()}\n\nFotoğraf Linki:\n${photoUrl}`;
-      const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
-      try {
-        await Linking.openURL(whatsappUrl);
-        router.back();
-      } catch {
-        Alert.alert('Fotoğraf yüklendi', 'Fotoğraf başarıyla yüklendi ancak WhatsApp açılamadı. Bağlantıyı tekrar deneyin.');
       }
     } catch {
-      // Final fallback: share photo directly via WhatsApp (no upload)
-      const prefix = isUsta ? 'Ustaya Danışma' : 'Mimara Danışma';
-      const message = `${prefix}\n\n${description.trim()}\n\n(Fotoğraf ekleniyor...)`;
-      try {
-        if (Platform.OS === 'web') {
-          const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
-          await Linking.openURL(whatsappUrl);
+      // Upload failed — continue to WhatsApp with text only
+    }
+
+    // Always open WhatsApp directly with the phone number
+    const textParts = [prefix, '', description.trim()];
+    if (photoUrl) {
+      textParts.push('', 'Fotoğraf Linki:', photoUrl);
+    }
+    const message = textParts.join('\n');
+    const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+
+    try {
+      const canOpen = await Linking.canOpenURL(whatsappUrl);
+      if (canOpen) {
+        await Linking.openURL(whatsappUrl);
+        router.back();
+      } else {
+        // Try api.whatsapp.com as fallback (works on web/desktop)
+        const fallbackUrl = `https://api.whatsapp.com/send?phone=${WHATSAPP_NUMBER}&text=${encodeURIComponent(message)}`;
+        const canOpenFallback = await Linking.canOpenURL(fallbackUrl);
+        if (canOpenFallback) {
+          await Linking.openURL(fallbackUrl);
           router.back();
         } else {
-          await Share.share({ url: photo, message });
-          router.back();
+          Alert.alert('WhatsApp açılamadı', 'Cihazınızda WhatsApp yüklü değil veya erişilemiyor.');
         }
-      } catch {
-        Alert.alert(
-          'Gönderilemedi',
-          'Fotoğraf yüklenemedi ve WhatsApp açılamadı. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.'
-        );
       }
+    } catch {
+      Alert.alert('Gönderilemedi', 'WhatsApp açılamadı. Lütfen tekrar deneyin.');
     } finally {
       setSending(false);
     }
