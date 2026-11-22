@@ -102,7 +102,8 @@ const UNITS: UnitType[] = ['Litre', 'Adet', 'Metre', 'Kg', 'Kutu', 'm²'];
 const COAT_OPTIONS = [1, 2, 3, 4];
 
 export default function ProjectDetailScreen() {
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id: rawId } = useLocalSearchParams<{ id?: string | string[] }>();
+  const id = Array.isArray(rawId) ? rawId[0] : rawId;
   const router = useRouter();
   const { profile } = useProfile();
   const { isGuest } = useAuth();
@@ -126,44 +127,39 @@ export default function ProjectDetailScreen() {
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
 
+  const applyProject = (value: Project) => {
+    setProject(value);
+    setProjectName(value.project_name);
+    setProjectType(value.project_type);
+    setArea(value.area_m2 ? String(value.area_m2) : '');
+    setMaterials(value.project_materials ?? []);
+    setCalculated((value.project_materials ?? []).length > 0);
+  };
+
   const fetch = useCallback(async () => {
+    const localProject = id ? await offlineSync.getLocalProject(id).catch(() => null) : null;
     try {
+      setItems(await offlineSync.getCachedItems());
       if (isGuest) {
-        setItems(await offlineSync.getCachedItems());
-        if (id) {
-          const localProject = await offlineSync.getLocalProject(id);
-          if (localProject) {
-            setProject(localProject);
-            setProjectName(localProject.project_name);
-            setProjectType(localProject.project_type);
-            setArea(localProject.area_m2 ? String(localProject.area_m2) : '');
-            setMaterials(localProject.project_materials ?? []);
-            setCalculated((localProject.project_materials ?? []).length > 0);
-          }
-        }
-      } else {
-        const itemsRes = await supabase.from('items').select('*, categories(*)').order('name');
-        if (itemsRes.error) throw itemsRes.error;
-        setItems(itemsRes.data ?? []);
-        if (id) {
-          const { data: proj, error: projectError } = await supabase
-            .from('projects')
-            .select('*, project_materials(*)')
-            .eq('id', id)
-            .maybeSingle();
-          if (projectError) throw projectError;
-          if (proj) {
-            setProject(proj);
-            setProjectName(proj.project_name);
-            setProjectType(proj.project_type);
-            setArea(proj.area_m2 ? String(proj.area_m2) : '');
-            setMaterials(proj.project_materials ?? []);
-            if (proj.project_materials && proj.project_materials.length > 0) setCalculated(true);
-          }
-        }
+        if (localProject) applyProject(localProject);
+        return;
+      }
+
+      const itemsRes = await supabase.from('items').select('*, categories(*)').order('name');
+      if (itemsRes.error) throw itemsRes.error;
+      setItems(itemsRes.data ?? []);
+      if (id) {
+        const { data: remoteProject, error: projectError } = await supabase
+          .from('projects')
+          .select('*, project_materials(*)')
+          .eq('id', id)
+          .maybeSingle();
+        if (projectError) throw projectError;
+        if (remoteProject) applyProject(remoteProject);
+        else if (localProject) applyProject(localProject);
       }
     } catch {
-      setItems([]);
+      if (localProject) applyProject(localProject);
     } finally {
       setLoading(false);
     }
