@@ -1,10 +1,10 @@
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, ScrollView, Alert, ActivityIndicator, Linking, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, ScrollView, Alert, ActivityIndicator, Linking, Platform, Share } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useCallback } from 'react';
 import { ArrowLeft, Camera, Image as ImageIcon, Send, MessageCircle, X } from 'lucide-react-native';
 import { Colors } from '@/lib/colors';
 import * as ImagePicker from 'expo-image-picker';
-import { File } from 'expo-file-system';
+import { File as FSFile } from 'expo-file-system';
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
 
 const WHATSAPP_NUMBER = '905537743488';
@@ -57,8 +57,9 @@ export default function ConsultScreen() {
 
     let photoUrl: string | null = null;
     const prefix = isUsta ? 'Ustaya Danışma' : 'Mimara Danışma';
+    const message = `${prefix}\n\n${description.trim()}`;
 
-    // Try to upload photo to storage; if it fails, we still open WhatsApp with text only
+    // Try uploading to Storage first; if it works, send link via WhatsApp text
     try {
       let uploadBody: Blob | ArrayBuffer;
       let photoSize = 0;
@@ -72,7 +73,7 @@ export default function ConsultScreen() {
         if (photoSize === 0) throw new Error('empty_photo');
         if (uploadBody.type.startsWith('image/')) contentType = uploadBody.type;
       } else {
-        const localFile = new File(photo);
+        const localFile = new FSFile(photo);
         const bytes = await localFile.bytes();
         if (bytes.byteLength === 0) throw new Error('empty_photo');
         photoSize = bytes.byteLength;
@@ -84,7 +85,6 @@ export default function ConsultScreen() {
       const extension = contentType === 'image/png' ? 'png' : contentType === 'image/webp' ? 'webp' : 'jpg';
       const fileName = `consult/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}.${extension}`;
 
-      // Try Supabase Storage SDK first
       try {
         const { error: uploadError } = await supabase.storage
           .from('consult-photos')
@@ -95,11 +95,9 @@ export default function ConsultScreen() {
         }
       } catch {}
 
-      // Fallback: direct HTTP upload to Storage REST API
       if (!photoUrl) {
-        const storagePath = encodeURIComponent(fileName);
-        const uploadEndpoint = `${SUPABASE_URL}/storage/v1/object/consult-photos/${storagePath}`;
-        const uploadResponse = await fetch(uploadEndpoint, {
+        const storagePath = encodeURI(fileName);
+        const uploadResponse = await fetch(`${SUPABASE_URL}/storage/v1/object/consult-photos/${storagePath}`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
@@ -114,37 +112,48 @@ export default function ConsultScreen() {
         }
       }
     } catch {
-      // Upload failed — continue to WhatsApp with text only
+      // Upload failed
     }
 
-    // Always open WhatsApp directly with the phone number
-    const textParts = [prefix, '', description.trim()];
+    setSending(false);
+
     if (photoUrl) {
-      textParts.push('', 'Fotoğraf Linki:', photoUrl);
-    }
-    const message = textParts.join('\n');
-    const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
-
-    try {
-      const canOpen = await Linking.canOpenURL(whatsappUrl);
-      if (canOpen) {
-        await Linking.openURL(whatsappUrl);
-        router.back();
-      } else {
-        // Try api.whatsapp.com as fallback (works on web/desktop)
-        const fallbackUrl = `https://api.whatsapp.com/send?phone=${WHATSAPP_NUMBER}&text=${encodeURIComponent(message)}`;
+      // Photo uploaded successfully — open WhatsApp with text + link
+      const fullMessage = `${message}\n\nFotoğraf Linki:\n${photoUrl}`;
+      const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(fullMessage)}`;
+      try {
+        const canOpen = await Linking.canOpenURL(whatsappUrl);
+        if (canOpen) {
+          await Linking.openURL(whatsappUrl);
+          router.back();
+          return;
+        }
+        const fallbackUrl = `https://api.whatsapp.com/send?phone=${WHATSAPP_NUMBER}&text=${encodeURIComponent(fullMessage)}`;
         const canOpenFallback = await Linking.canOpenURL(fallbackUrl);
         if (canOpenFallback) {
           await Linking.openURL(fallbackUrl);
           router.back();
-        } else {
-          Alert.alert('WhatsApp açılamadı', 'Cihazınızda WhatsApp yüklü değil veya erişilemiyor.');
+          return;
         }
-      }
+      } catch {}
+    }
+
+    // Fallback: share photo + text directly via native share sheet (WhatsApp will appear in the list)
+    try {
+      await Share.share({
+        url: photo,
+        message,
+      });
+      router.back();
     } catch {
-      Alert.alert('Gönderilemedi', 'WhatsApp açılamadı. Lütfen tekrar deneyin.');
-    } finally {
-      setSending(false);
+      // Last resort: WhatsApp text only
+      const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+      try {
+        await Linking.openURL(whatsappUrl);
+        router.back();
+      } catch {
+        Alert.alert('Gönderilemedi', 'Fotoğraf gönderilemedi. Lütfen tekrar deneyin.');
+      }
     }
   };
 

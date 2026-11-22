@@ -1,0 +1,13 @@
+{
+  "projectId": "68810101",
+  "functions": {
+    "iyzico-checkout": {
+      "hasChanged": false,
+      "hash": "ed4a0d052855a1c04f88eec240a9dbecb2e47df02c5e7e1936a67fccfbf9ffea"
+    },
+    "consult-upload": {
+      "hasChanged": false,
+      "hash": "ae6d06c8904db2d53c20a151ccfbd6d481bc8ecd6eab2d34078eb1946f373943"
+    }
+  }
+}
