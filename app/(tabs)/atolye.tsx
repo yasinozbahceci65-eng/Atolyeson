@@ -69,12 +69,12 @@ export default function AtolyeScreen() {
         style: 'destructive',
         onPress: async () => {
           try {
-            const cached = await offlineSync.getCachedItems();
-            await offlineSync.cacheItems(cached.filter(current => current.id !== item.id));
             if (!isGuest && !item.id.startsWith('local-')) {
               const { error } = await supabase.from('items').delete().eq('id', item.id);
-              if (error) throw error;
+              if (error && error.code !== 'PGRST205') throw error;
             }
+            const cached = await offlineSync.getCachedItems();
+            await offlineSync.cacheItems(cached.filter(current => current.id !== item.id));
             setItems(current => current.filter(current => current.id !== item.id));
           } catch {
             Alert.alert('Silinemedi', 'Malzeme silinirken bir sorun oluştu.');

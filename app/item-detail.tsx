@@ -128,7 +128,10 @@ export default function ItemDetailScreen() {
             const cachedItems = await offlineSync.getCachedItems();
             await offlineSync.cacheItems(cachedItems.filter(cachedItem => cachedItem.id !== item!.id));
           } else {
-            await supabase.from('items').delete().eq('id', item!.id);
+            const { error } = await supabase.from('items').delete().eq('id', item!.id);
+            if (error && error.code !== 'PGRST205') throw error;
+            const cachedItems = await offlineSync.getCachedItems();
+            await offlineSync.cacheItems(cachedItems.filter(cachedItem => cachedItem.id !== item!.id));
           }
           router.back();
         }
