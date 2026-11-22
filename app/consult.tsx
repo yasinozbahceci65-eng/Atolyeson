@@ -1,11 +1,11 @@
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, ScrollView, Alert, ActivityIndicator, Linking, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, ScrollView, Alert, ActivityIndicator, Linking, Platform, Share } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useCallback } from 'react';
 import { ArrowLeft, Camera, Image as ImageIcon, Send, MessageCircle, X } from 'lucide-react-native';
 import { Colors } from '@/lib/colors';
 import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
-import { supabase } from '@/lib/supabase';
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
 
 const WHATSAPP_NUMBER = '905537743488';
 
@@ -55,6 +55,8 @@ export default function ConsultScreen() {
     if (!photo) { Alert.alert('Uyarı', 'Lütfen fotoğraf yükleyin'); return; }
     setSending(true);
 
+    let photoUrl: string | null = null;
+
     try {
       let uploadBody: Blob | ArrayBuffer;
       let photoSize = 0;
@@ -79,20 +81,46 @@ export default function ConsultScreen() {
       if (!['image/jpeg', 'image/png', 'image/webp'].includes(contentType)) contentType = 'image/jpeg';
       const extension = contentType === 'image/png' ? 'png' : contentType === 'image/webp' ? 'webp' : 'jpg';
       const fileName = `consult/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}.${extension}`;
-      const { error: uploadError } = await supabase.storage
-        .from('consult-photos')
-        .upload(fileName, uploadBody, {
-          contentType,
-          cacheControl: '3600',
-          upsert: false,
-        });
-      if (uploadError) throw uploadError;
 
-      const { data } = supabase.storage.from('consult-photos').getPublicUrl(fileName);
-      if (!data.publicUrl) throw new Error('photo_url_failed');
+      // Try Supabase Storage SDK first
+      let uploadOk = false;
+      try {
+        const { error: uploadError } = await supabase.storage
+          .from('consult-photos')
+          .upload(fileName, uploadBody, { contentType, cacheControl: '3600', upsert: false });
+        if (!uploadError) {
+          uploadOk = true;
+          const { data } = supabase.storage.from('consult-photos').getPublicUrl(fileName);
+          if (data.publicUrl) photoUrl = data.publicUrl;
+        }
+      } catch {}
+
+      // Fallback: direct HTTP upload to Storage REST API
+      if (!uploadOk || !photoUrl) {
+        const storagePath = encodeURIComponent(fileName);
+        const uploadEndpoint = `${SUPABASE_URL}/storage/v1/object/consult-photos/${storagePath}`;
+        const headers: Record<string, string> = {
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'apikey': SUPABASE_ANON_KEY,
+          'Content-Type': contentType,
+          'x-upsert': 'false',
+        };
+        const uploadResponse = await fetch(uploadEndpoint, {
+          method: 'POST',
+          headers,
+          body: Platform.OS === 'web' ? uploadBody as Blob : (uploadBody as ArrayBuffer),
+        });
+        if (!uploadResponse.ok) {
+          const errText = await uploadResponse.text().catch(() => '');
+          throw new Error(`upload_http_${uploadResponse.status}: ${errText.slice(0, 200)}`);
+        }
+        photoUrl = `${SUPABASE_URL}/storage/v1/object/public/consult-photos/${storagePath}`;
+      }
+
+      if (!photoUrl) throw new Error('photo_url_failed');
 
       const prefix = isUsta ? 'Ustaya Danışma' : 'Mimara Danışma';
-      const message = `${prefix}\n\n${description.trim()}\n\nFotoğraf Linki:\n${data.publicUrl}`;
+      const message = `${prefix}\n\n${description.trim()}\n\nFotoğraf Linki:\n${photoUrl}`;
       const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
       try {
         await Linking.openURL(whatsappUrl);
@@ -101,7 +129,24 @@ export default function ConsultScreen() {
         Alert.alert('Fotoğraf yüklendi', 'Fotoğraf başarıyla yüklendi ancak WhatsApp açılamadı. Bağlantıyı tekrar deneyin.');
       }
     } catch {
-      Alert.alert('Gönderilemedi', 'Fotoğraf yüklenemedi. Lütfen tekrar deneyin.');
+      // Final fallback: share photo directly via WhatsApp (no upload)
+      const prefix = isUsta ? 'Ustaya Danışma' : 'Mimara Danışma';
+      const message = `${prefix}\n\n${description.trim()}\n\n(Fotoğraf ekleniyor...)`;
+      try {
+        if (Platform.OS === 'web') {
+          const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+          await Linking.openURL(whatsappUrl);
+          router.back();
+        } else {
+          await Share.share({ url: photo, message });
+          router.back();
+        }
+      } catch {
+        Alert.alert(
+          'Gönderilemedi',
+          'Fotoğraf yüklenemedi ve WhatsApp açılamadı. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.'
+        );
+      }
     } finally {
       setSending(false);
     }
