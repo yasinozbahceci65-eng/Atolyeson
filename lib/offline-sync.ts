@@ -1,9 +1,10 @@
 import { asyncStorage, netInfo } from './platform-storage';
-import { supabase, Item, Project } from './supabase';
+import { supabase, Item, Project, Category } from './supabase';
 
 const CACHE_KEYS = {
   items: 'offline_items',
   projects: 'offline_projects',
+  categories: 'offline_categories',
   pendingChanges: 'offline_pending_changes',
   lastSync: 'offline_last_sync',
 };
@@ -52,6 +53,15 @@ class OfflineSync {
 
   async getCachedItems(): Promise<Item[]> {
     const data = await asyncStorage.getItem(CACHE_KEYS.items);
+    return data ? JSON.parse(data) : [];
+  }
+
+  async cacheCategories(categories: Category[]) {
+    await asyncStorage.setItem(CACHE_KEYS.categories, JSON.stringify(categories));
+  }
+
+  async getCachedCategories(): Promise<Category[]> {
+    const data = await asyncStorage.getItem(CACHE_KEYS.categories);
     return data ? JSON.parse(data) : [];
   }
 

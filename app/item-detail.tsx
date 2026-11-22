@@ -9,6 +9,15 @@ import { useGuestGuard } from '@/lib/guest-guard';
 
 const UNITS: UnitType[] = ['Litre', 'Adet', 'Metre', 'Kg', 'Kutu', 'm²'];
 
+const DEFAULT_CATEGORIES: Category[] = [
+  { id: 'local-category-Boya', name: 'Boya', color: '#3B82F6', icon: 'box', created_at: '' },
+  { id: 'local-category-Seramik', name: 'Seramik', color: '#F59E0B', icon: 'box', created_at: '' },
+  { id: 'local-category-Alçıpan', name: 'Alçıpan', color: '#10B981', icon: 'box', created_at: '' },
+  { id: 'local-category-Laminat Parke', name: 'Laminat Parke', color: '#EF4444', icon: 'box', created_at: '' },
+  { id: 'local-category-Tesisat', name: 'Tesisat', color: '#06B6D4', icon: 'box', created_at: '' },
+  { id: 'local-category-Marangoz', name: 'Marangoz', color: '#8B5CF6', icon: 'box', created_at: '' },
+];
+
 export default function ItemDetailScreen() {
   const { id: rawId } = useLocalSearchParams<{ id?: string | string[] }>();
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
@@ -46,7 +55,8 @@ export default function ItemDetailScreen() {
 
       if (id?.startsWith('local-')) {
         if (cachedItem) applyItem(cachedItem);
-        setCategories([]);
+        const cachedCats = await offlineSync.getCachedCategories().catch(() => []);
+        setCategories(cachedCats.length ? cachedCats : DEFAULT_CATEGORIES);
         return;
       }
 
@@ -57,11 +67,20 @@ export default function ItemDetailScreen() {
       if (itemRes.error) throw itemRes.error;
       if (itemRes.data) applyItem(itemRes.data);
       else if (cachedItem) applyItem(cachedItem);
-      setCategories(catRes.data ?? []);
+      const fetchedCats = catRes.data ?? [];
+      if (fetchedCats.length > 0) {
+        setCategories(fetchedCats);
+        await offlineSync.cacheCategories(fetchedCats);
+      } else {
+        const cachedCats = await offlineSync.getCachedCategories().catch(() => []);
+        setCategories(cachedCats.length ? cachedCats : DEFAULT_CATEGORIES);
+      }
     } catch {
       const cachedItems = await offlineSync.getCachedItems().catch(() => []);
       const cachedItem = cachedItems.find(currentItem => currentItem.id === id);
       if (cachedItem) applyItem(cachedItem);
+      const cachedCats = await offlineSync.getCachedCategories().catch(() => []);
+      setCategories(cachedCats.length ? cachedCats : DEFAULT_CATEGORIES);
     } finally {
       setLoading(false);
     }

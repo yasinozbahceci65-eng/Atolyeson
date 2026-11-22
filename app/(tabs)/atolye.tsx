@@ -10,6 +10,20 @@ import { useGuestGuard } from '@/lib/guest-guard';
 import { useAuth } from '@/lib/auth-context';
 import { useEffect } from 'react';
 
+const FALLBACK_CATEGORIES: Category[] = [
+  { id: 'local-category-Alçıpan', name: 'Alçıpan', color: '#10B981', icon: 'layers', created_at: '' },
+  { id: 'local-category-Boru & Tesisat', name: 'Boru & Tesisat', color: '#8B5CF6', icon: 'pipe', created_at: '' },
+  { id: 'local-category-Boya', name: 'Boya', color: '#3B82F6', icon: 'paintbrush', created_at: '' },
+  { id: 'local-category-Boyalar', name: 'Boyalar', color: '#3B82F6', icon: 'droplets', created_at: '' },
+  { id: 'local-category-El Aletleri', name: 'El Aletleri', color: '#F59E0B', icon: 'wrench', created_at: '' },
+  { id: 'local-category-Elektrik', name: 'Elektrik', color: '#EF4444', icon: 'zap', created_at: '' },
+  { id: 'local-category-Laminat Parke', name: 'Laminat Parke', color: '#EF4444', icon: 'square', created_at: '' },
+  { id: 'local-category-Marangoz', name: 'Marangoz', color: '#8B5CF6', icon: 'hammer', created_at: '' },
+  { id: 'local-category-Sarf Malzemeleri', name: 'Sarf Malzemeleri', color: '#10B981', icon: 'package', created_at: '' },
+  { id: 'local-category-Seramik', name: 'Seramik', color: '#F59E0B', icon: 'grid', created_at: '' },
+  { id: 'local-category-Tesisat', name: 'Tesisat', color: '#06B6D4', icon: 'pipe', created_at: '' },
+];
+
 export default function AtolyeScreen() {
   const router = useRouter();
   const { requireAuth } = useGuestGuard();
@@ -25,9 +39,10 @@ export default function AtolyeScreen() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
+      const cachedCats = await offlineSync.getCachedCategories().catch(() => []);
       if (isGuest) {
         setItems(await offlineSync.getCachedItems());
-        setCategories([]);
+        setCategories(cachedCats.length ? cachedCats : FALLBACK_CATEGORIES);
         return;
       }
       const [itemsRes, catRes] = await Promise.all([
@@ -41,10 +56,18 @@ export default function AtolyeScreen() {
         const cached = await offlineSync.getCachedItems();
         setItems(cached);
       }
-      setCategories(catRes.data ?? []);
+      const fetchedCats = catRes.data ?? [];
+      if (fetchedCats.length > 0) {
+        setCategories(fetchedCats);
+        await offlineSync.cacheCategories(fetchedCats);
+      } else {
+        setCategories(cachedCats.length ? cachedCats : FALLBACK_CATEGORIES);
+      }
     } catch {
       const cached = await offlineSync.getCachedItems().catch(() => []);
       setItems(cached);
+      const cachedCats = await offlineSync.getCachedCategories().catch(() => []);
+      setCategories(cachedCats.length ? cachedCats : FALLBACK_CATEGORIES);
     } finally {
       setLoading(false);
     }
